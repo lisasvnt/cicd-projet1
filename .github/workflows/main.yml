@@ -92,7 +92,7 @@ jobs:
       - name: build application frontend
         run: npm run build
       - name: upload build artefact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build
           path: ./client/dist
