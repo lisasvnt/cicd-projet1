@@ -10,7 +10,8 @@ on:
 
 jobs:
   # CI
-  tests:
+  # BACKEND
+  check-tests-backend:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -42,23 +43,79 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
+  # FRONTEND
+  check-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+    steps:
+      # Récupération du code
+      - name: checkout code
+        uses: actions/checkout@v4
+      # Installation de node.js
+      - name: install node.js
+        uses: actions/setup-node@v3
+        with:
+          cache: "npm"
+          cache-dependency-path: ./client/package-lock.json
+      # Installation des dépendances
+      - name: install dependencies
+        run: npm ci --prefer-offline
+      # Vérification du code
+      - name: verify code
+        run: npm run lint
+      # Vérification des vulnérabilités des dépendances
+      - name: verify dependencie's vulnerabilities
+        run: npm audit --omit=dev --audit-level=critical
+
+  build-frontend:
+    needs: check-frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+    steps:
+      # Récupération du code
+      - name: checkout code
+        uses: actions/checkout@v4
+      # Installation de node.js
+      - name: install node.js
+        uses: actions/setup-node@v3
+        with:
+          cache: "npm"
+          cache-dependency-path: ./client/package-lock.json
+      # Installation des dépendances
+      - name: install dependencies
+        run: npm ci --prefer-offline
+      # Construction de l'application
+      - name: build application frontend
+        run: npm run build
+      - name: upload build artefact
+        uses: actions/upload-artifact@v3
+        with:
+          name: build
+          path: ./client/dist
+
   # CD
   deploy:
-    needs: tests
+    needs: [check-tests-backend, build-frontend]
     runs-on: ubuntu-latest
     steps:
       - name: checkout code
         uses: actions/checkout@v4
+      - name: download build artefact
+        uses: actions/download-artifact@v3
+        with:
+          name: build
+          path: ./dist
       - name: deploy on the server
-        run: | 
+        run: |
           eval $(ssh-agent -s)
           ssh-add - <<< "${{ secrets.SSH_KEY_VPS }}"
           mkdir -p ~/.ssh
           ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
           scp -r ./server $SERVER_USER@$SERVER_IP:/var/www
+          scp -r ./dist $SERVER_USER@$SERVER_IP:/var/www/dist
           ssh $SERVER_USER@$SERVER_IP "cd /var/www/server && npm install --omit=dev"
           ssh $SERVER_USER@$SERVER_IP "cd /var/www/server && pm2 startOrRestart ecosystem.config.js --env production && pm2 save"
-
-
-
-
