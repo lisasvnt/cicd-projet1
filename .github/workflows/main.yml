@@ -27,7 +27,7 @@ jobs:
           cache-dependency-path: ./server/package-lock.json
       # Installation des dépendances
       - name: install dependencies
-        run: npm ci --cache .npm --prefer-offline
+        run: npm ci --prefer-offline
       # Vérification du code
       - name: verify code
         run: npm run lint
@@ -37,6 +37,10 @@ jobs:
       # Exécution des tests
       - name: execute tests
         run: npm run test:ci
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   # CD
   deploy:
