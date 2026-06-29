@@ -33,7 +33,7 @@ jobs:
         run: npm run lint
       # Vérification des vulnérabilités des dépendances
       - name: verify dependencie's vulnerabilities
-        run: npm run audit
+        run: npm audit
       # Exécution des tests
       - name: execute tests
         run: npm run test:ci
