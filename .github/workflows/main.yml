@@ -97,9 +97,47 @@ jobs:
           name: build
           path: ./client/dist
 
+  test-e2e-frontend:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    steps:
+      # Récupération du code
+      - name: checkout code
+        uses: actions/checkout@v4
+      # Installation de node.js
+      - name: install node.js
+        uses: actions/setup-node@v3
+        with:
+          cache: "npm"
+          cache-dependency-path: .**package-lock.json
+      # Installation des dépendances
+      - name: install dependencies
+        run: |
+          cd server
+          npm ci --prefer-offline
+      - name: download build artefact
+        uses: actions/downloadartifact@v4
+        with:
+          name: build
+          path: ./client/dist
+      - name: start backend
+        run: |
+          cd server
+          npm start &
+      - name: exec cypress
+        uses: cypress-io/github-actions@v6
+        with: 
+          working-directory: ./client
+          browser: chrome
+          start: npm run preview
+          wait-on: http://localhost:4173
+          wait-on-timeout: 60
+          config: baseUrl=http://localhost:4173
+
+
   # CD
   deploy:
-    needs: [check-tests-backend, build-frontend]
+    needs: [check-tests-backend, test-e2e-frontend]
     runs-on: ubuntu-latest
     steps:
       - name: checkout code
